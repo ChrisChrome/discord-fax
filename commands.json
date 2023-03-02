@@ -18,7 +18,7 @@
 			},
 			{
 				"name": "file",
-				"description": "The file to send",
+				"description": "The file to send | MUST BE A PDF",
 				"type": 11,
 				"required": true
 			}

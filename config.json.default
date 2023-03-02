@@ -1,12 +1,19 @@
 {
 	"discord": {
-		"token": ""
+		"token": "",
+		"guilds": [
+			""
+		]
 	},
 	"ssh": {
-		"host": "127.0.0.1",
+		"host": "pbx.host.example.com",
 		"port": 22,
-		"user": "root",
-		"keyfile": "./.ssh/id_ed25519",
+		"username": "root",
+		"privateKeyPath": "./.ssh/id_ed25519",
 		"passphrase": ""
+	},
+	"fax": {
+		"maxFileSize" : 100000000,
+		"callerId": ""
 	}
 }
