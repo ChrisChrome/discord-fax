@@ -10,6 +10,7 @@
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "chalk": "^5.2.0",
+    "colors": "^1.4.0",
     "discord.js": "^14.7.1",
     "node-ssh": "^13.0.1"
   }

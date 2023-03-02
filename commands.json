@@ -1,0 +1,27 @@
+[
+	{
+		"name": "fax",
+		"description": "Send a fax over Discord",
+		"type": 1,
+		"options": [
+			{
+				"name": "to",
+				"description": "The number to send the fax to",
+				"type": 4,
+				"required": true
+			},
+			{
+				"name": "confirm",
+				"description": "The same number to confirm you typed it right",
+				"type": 4,
+				"required": true
+			},
+			{
+				"name": "file",
+				"description": "The file to send",
+				"type": 11,
+				"required": true
+			}
+		]
+	}
+]
