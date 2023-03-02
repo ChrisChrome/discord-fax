@@ -13,12 +13,19 @@ const rest = new REST({
 const fs = require("fs")
 const path = require("path")
 const colors = require("colors")
-const {NodeSSH} = require('node-ssh')
+const {
+	NodeSSH
+} = require('node-ssh')
 const ssh = new NodeSSH()
 const phoneRegex = /^1?([1-9])(\d{9})/
 
+// Global Variables
+var rateLimit = {}; // user id: timestamp
+
 // Init Discord
-const client = new Discord.Client({intents: ["Guilds"]})
+const client = new Discord.Client({
+	intents: ["Guilds"]
+})
 
 client.on("ready", () => {
 	console.log(`${colors.cyan("[INFO]")} Logged in as ${colors.green(client.user.tag)}`)
@@ -50,13 +57,34 @@ client.on("ready", () => {
 
 client.on("interactionCreate", async interaction => {
 	if (!interaction.isCommand()) return;
-	switch(interaction.commandName) {
+	switch (interaction.commandName) {
 		case "fax": // Allows a user to send a PDF to a fax number
-			if (!interaction.options.get("to").value.toString().match(phoneRegex)) return interaction.reply({content: "Invalid phone number.", ephemeral: true});
-			if (interaction.options.get("to").value !== interaction.options.get("confirm").value) return interaction.reply({content: "Phone numbers do not match.", ephemeral: true});
-			if (!interaction.options.get("file").value) return interaction.reply({content: "No file provided, how'd you even do that???", ephemeral: true});
-			if (interaction.options.get("file").attachment.contentType != "application/pdf") return interaction.reply({content: "File is not a PDF.", ephemeral: true});
-			interaction.reply({content: "Getting Ready...", ephemeral: true}).then(async () => {
+			if (!interaction.options.get("to").value.toString().match(phoneRegex)) return interaction.reply({
+				content: "Invalid phone number.",
+				ephemeral: true
+			});
+			if (interaction.options.get("to").value !== interaction.options.get("confirm").value) return interaction.reply({
+				content: "Phone numbers do not match.",
+				ephemeral: true
+			});
+			if (!interaction.options.get("file").value) return interaction.reply({
+				content: "No file provided, how'd you even do that???",
+				ephemeral: true
+			});
+			if (interaction.options.get("file").attachment.contentType != "application/pdf") return interaction.reply({
+				content: "File is not a PDF.",
+				ephemeral: true
+			});
+			if (!rateLimit[interaction.user.id]) rateLimit[interaction.user.id] = 0;
+			if (Date.now() - rateLimit[interaction.user.id] < config.fax.rateLimitMinutes * 60 * 1000) return await interaction.reply({
+				content: `You are rate limited. Please wait ${Math.round((config.fax.rateLimitMinutes * 60 * 1000 - (Date.now() - rateLimit[interaction.user.id])) / 1000)} seconds before trying again.`,
+				ephemeral: true
+			});
+			rateLimit[interaction.user.id] = Date.now();
+			interaction.reply({
+				content: "Getting Ready...",
+				ephemeral: true
+			}).then(async () => {
 
 				// Start doing SSH stuff
 				await ssh.execCommand("mkdir -p /tmp/fax/send")
@@ -64,7 +92,10 @@ client.on("interactionCreate", async interaction => {
 				await ssh.execCommand(`cd /tmp/fax/send && gs -q -dNOPAUSE -dBATCH -sDEVICE=tiffg4 -sPAPERSIZE=letter -sOutputFile=${interaction.options.get("to").value}.tiff ${interaction.options.get("to").value}.pdf`)
 				await ssh.execCommand(`chown asterisk:asterisk /tmp/fax/send/${interaction.options.get("to").value}.tiff`)
 				await ssh.execCommand(`rm /tmp/fax/send/${interaction.options.get("to").value}.pdf`)
-				interaction.editReply({content: "Sending...", ephemeral: true});
+				interaction.editReply({
+					content: "Sending...\nKeep in mind we can't confirm if it fails or succeeds in sending right now, so it's a bit of a gamble. This will be implemented in the future!",
+					ephemeral: true
+				});
 				await ssh.execCommand(`/var/lib/asterisk/bin/callback ${interaction.options.get("to").value} sendfax.s.1 0 0 ${config.fax.callerId}`);
 			});
 			break;
@@ -81,7 +112,7 @@ ssh.connect(config.ssh).then(() => {
 })
 
 // Take over Ctrl+C
-process.on('SIGINT', function() {
+process.on('SIGINT', function () {
 	console.log(`${colors.cyan("[INFO]")} Shutting down...`)
 	ssh.dispose()
 	process.exit()

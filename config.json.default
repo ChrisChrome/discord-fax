@@ -6,7 +6,7 @@
 		]
 	},
 	"ssh": {
-		"host": "pbx.host.example.com",
+		"host": "",
 		"port": 22,
 		"username": "root",
 		"privateKeyPath": "./.ssh/id_ed25519",
@@ -14,6 +14,7 @@
 	},
 	"fax": {
 		"maxFileSize" : 100000000,
-		"callerId": ""
+		"callerId": "",
+		"rateLimitMinutes": 2
 	}
 }
