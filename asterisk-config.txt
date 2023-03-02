@@ -1,0 +1,3 @@
+[sendfax]
+exten => s,1,SendFax(/tmp/fax/send/${CALLERID(num)}.tiff)
+exten => s,n,Hangup()
