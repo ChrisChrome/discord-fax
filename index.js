@@ -71,15 +71,8 @@ client.on("interactionCreate", async interaction => {
 				content: "No file provided, how'd you even do that???",
 				ephemeral: true
 			});
-			if (interaction.options.get("file").attachment.contentType != "application/pdf") return interaction.reply({
-				content: "File is not a PDF.",
-				ephemeral: true
-			});
 			if (!rateLimit[interaction.user.id]) rateLimit[interaction.user.id] = 0;
-			if (Date.now() - rateLimit[interaction.user.id] < config.fax.rateLimitMinutes * 60 * 1000) return await interaction.reply({
-				content: `You are rate limited. Please wait ${Math.round((config.fax.rateLimitMinutes * 60 * 1000 - (Date.now() - rateLimit[interaction.user.id])) / 1000)} seconds before trying again.`,
-				ephemeral: true
-			}).then(() => {
+			if (Date.now() - rateLimit[interaction.user.id] < config.fax.rateLimitMinutes * 60 * 1000) return await interaction.deferReply({ephemeral: true}).then(() => {
 				// Attempt to update message when rate limit is over
 				setTimeout(async () => {
 					if (Date.now() - rateLimit[interaction.user.id] > config.fax.rateLimitMinutes * 60 * 1000) {
@@ -94,10 +87,21 @@ client.on("interactionCreate", async interaction => {
 			await interaction.deferReply({
 				ephemeral: true
 			});
-
+			let fileExtension = interaction.options.get("file").attachment.url.split(".").pop()
 			// Start doing SSH stuff
 			await ssh.execCommand("mkdir -p /tmp/fax/send")
-			await ssh.execCommand(`wget -O /tmp/fax/send/${interaction.options.get("to").value}.pdf ${interaction.options.get("file").attachment.url}`)
+			await ssh.execCommand(`wget -O /tmp/fax/send/${interaction.options.get("to").value}.${fileExtension} ${interaction.options.get("file").attachment.url}`)
+			if (interaction.options.get("file").attachment.contentType != "application/pdf" && interaction.options.get("file").attachment.contentType.startsWith("image/")) {
+				// Only works with JPG, PNG, GIF, SVG, and WEBP
+				if (!["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(fileExtension)) return interaction.editReply({
+					content: "Unsupported file type.",
+					ephemeral: true
+				});
+				await ssh.execCommand(`convert -background white -page a4 -gravity northwest -border 20 -bordercolor none -resize "595x842>" '/tmp/fax/send/${interaction.options.get("to").value}.${fileExtension}' '/tmp/fax/send/${interaction.options.get("to").value}.pdf'`).then(async (out) => {
+					if(out.stderr) console.log(out.stderr);
+					await ssh.execCommand(`rm /tmp/fax/send/${interaction.options.get("to").value}.${fileExtension}`);
+				})
+			}
 			await ssh.execCommand(`cd /tmp/fax/send && gs -q -dNOPAUSE -dBATCH -sDEVICE=tiffg4 -sPAPERSIZE=letter -sOutputFile=${interaction.options.get("to").value}.tiff ${interaction.options.get("to").value}.pdf`)
 			await ssh.execCommand(`chown asterisk:asterisk /tmp/fax/send/${interaction.options.get("to").value}.tiff`)
 			await ssh.execCommand(`rm /tmp/fax/send/${interaction.options.get("to").value}.pdf`)
