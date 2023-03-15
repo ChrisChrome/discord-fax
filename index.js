@@ -81,22 +81,24 @@ client.on("interactionCreate", async interaction => {
 				ephemeral: true
 			});
 			rateLimit[interaction.user.id] = Date.now();
-			interaction.reply({
-				content: "Getting Ready...",
+			await interaction.deferReply({
 				ephemeral: true
-			}).then(async () => {
+			});
 
-				// Start doing SSH stuff
-				await ssh.execCommand("mkdir -p /tmp/fax/send")
-				await ssh.execCommand(`wget -O /tmp/fax/send/${interaction.options.get("to").value}.pdf ${interaction.options.get("file").attachment.url}`)
-				await ssh.execCommand(`cd /tmp/fax/send && gs -q -dNOPAUSE -dBATCH -sDEVICE=tiffg4 -sPAPERSIZE=letter -sOutputFile=${interaction.options.get("to").value}.tiff ${interaction.options.get("to").value}.pdf`)
-				await ssh.execCommand(`chown asterisk:asterisk /tmp/fax/send/${interaction.options.get("to").value}.tiff`)
-				await ssh.execCommand(`rm /tmp/fax/send/${interaction.options.get("to").value}.pdf`)
-				interaction.editReply({
-					content: "Sending...\nKeep in mind we can't confirm if it fails or succeeds in sending right now, so it's a bit of a gamble. This will be implemented in the future!",
-					ephemeral: true
-				});
-				await ssh.execCommand(`/var/lib/asterisk/bin/callback ${interaction.options.get("to").value} sendfax.s.1 0 0 ${config.fax.callerId}`);
+			// Start doing SSH stuff
+			await ssh.execCommand("mkdir -p /tmp/fax/send")
+			await ssh.execCommand(`wget -O /tmp/fax/send/${interaction.options.get("to").value}.pdf ${interaction.options.get("file").attachment.url}`)
+			await ssh.execCommand(`cd /tmp/fax/send && gs -q -dNOPAUSE -dBATCH -sDEVICE=tiffg4 -sPAPERSIZE=letter -sOutputFile=${interaction.options.get("to").value}.tiff ${interaction.options.get("to").value}.pdf`)
+			await ssh.execCommand(`chown asterisk:asterisk /tmp/fax/send/${interaction.options.get("to").value}.tiff`)
+			await ssh.execCommand(`rm /tmp/fax/send/${interaction.options.get("to").value}.pdf`)
+			interaction.editReply({
+				content: "Dialing...",
+				ephemeral: true
+			});
+			await ssh.execCommand(`/var/lib/asterisk/bin/callback ${interaction.options.get("to").value} sendfax.s.1 0 0 ${config.fax.callerId}`);
+			interaction.editReply({
+				content: "Answered. Sending fax...",
+				ephemeral: true
 			});
 			break;
 	}
