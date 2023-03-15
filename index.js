@@ -79,7 +79,17 @@ client.on("interactionCreate", async interaction => {
 			if (Date.now() - rateLimit[interaction.user.id] < config.fax.rateLimitMinutes * 60 * 1000) return await interaction.reply({
 				content: `You are rate limited. Please wait ${Math.round((config.fax.rateLimitMinutes * 60 * 1000 - (Date.now() - rateLimit[interaction.user.id])) / 1000)} seconds before trying again.`,
 				ephemeral: true
-			});
+			}).then(() => {
+				// Attempt to update message when rate limit is over
+				setTimeout(async () => {
+					if (Date.now() - rateLimit[interaction.user.id] > config.fax.rateLimitMinutes * 60 * 1000) {
+						await interaction.editReply({
+							content: `You are no longer rate limited. You can now send a fax.`,
+							ephemeral: true
+						}).catch(() => {}) // Don't care if it fails, probably means message was deleted by user
+					}
+				}, config.fax.rateLimitMinutes * 60 * 1000 - (Date.now() - rateLimit[interaction.user.id]))
+			})
 			rateLimit[interaction.user.id] = Date.now();
 			await interaction.deferReply({
 				ephemeral: true
